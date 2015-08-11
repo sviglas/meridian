@@ -8,7 +8,7 @@ import java.util.concurrent.RecursiveTask;
 
 import net.sviglas.util.Pair;
 
-public class PartitionTask<TIn, KOut, VOut>
+public class PartitionTask<TIn, KOut extends Comparable<? super KOut>, VOut>
     extends RecursiveTask<SortedMap<KOut, LList<VOut>>> {
     
     private List<TIn> input;
@@ -32,7 +32,7 @@ public class PartitionTask<TIn, KOut, VOut>
                 if (values != null)
                     values.append(kvout.second);
                 else {
-                    values = new LList<VOut>();
+                    values = new LList<>();
                     values.append(kvout.second);
                     localGroup.put(kvout.first, values);
                 }                
