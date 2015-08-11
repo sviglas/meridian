@@ -1,4 +1,4 @@
-package net.sviglas.meridian;
+package net.sviglas.meridian.task;
 
 import java.util.Iterator;
 import java.util.SortedSet;
@@ -21,11 +21,10 @@ public class KeyRange<K> extends Range<K> {
             Iterator<K> it = set.iterator();
             K l = it.next();
             K h = it.next();
-            return new Pair<Range<K>, Range<K>>(
-                    new KeyRange<K>(set.subSet(l, h)),
-                    new KeyRange<K>(set.tailSet(h)));
+            return new Pair<>(new KeyRange<>(set.subSet(l, h)),
+                    new KeyRange<>(set.tailSet(h)));
         }
-        return new Pair<Range<K>, Range<K>>(this, this);
+        return new Pair<>(this, this);
     }
 
     public Iterator<K> iterator() {

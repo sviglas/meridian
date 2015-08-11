@@ -1,7 +1,7 @@
-package net.sviglas.meridian;
+package net.sviglas.meridian.task;
 
 import net.sviglas.util.Pair;
 
 public interface Extractor <R, K, V> {
-    public Pair<K, V> extract(R r);
+    Pair<K, V> extract(R r);
 }

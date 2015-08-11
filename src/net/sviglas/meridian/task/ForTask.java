@@ -1,4 +1,4 @@
-package net.sviglas.meridian;
+package net.sviglas.meridian.task;
 
 import java.util.List;
 import java.util.concurrent.RecursiveTask;
@@ -19,7 +19,7 @@ public class ForTask <RIn, ROut> extends RecursiveTask<LList<ROut>> {
     @Override
     protected LList<ROut> compute() {
         if (range.smallEnough()) {
-            LList<ROut> localList = new LList<ROut>();
+            LList<ROut> localList = new LList<>();
             for (RIn r : input.subList(range.begin(), range.end()))
                 localList.append(forFunction.apply(r));
             return localList;
@@ -27,9 +27,9 @@ public class ForTask <RIn, ROut> extends RecursiveTask<LList<ROut>> {
         else {
             Pair<Range<Integer>, Range<Integer>> ranges = range.split();
             ForTask<RIn, ROut> left =
-                new ForTask<RIn, ROut>(input, ranges.first, forFunction);
+                new ForTask<>(input, ranges.first, forFunction);
             ForTask<RIn, ROut> right =
-                new ForTask<RIn, ROut>(input, ranges.second, forFunction);
+                new ForTask<>(input, ranges.second, forFunction);
             left.fork();
             right.fork();
             return left.join().append(right.join());

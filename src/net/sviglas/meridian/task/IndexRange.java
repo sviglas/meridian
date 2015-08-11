@@ -1,4 +1,4 @@
-package net.sviglas.meridian;
+package net.sviglas.meridian.task;
 
 import java.util.Iterator;
 
@@ -25,8 +25,8 @@ public class IndexRange extends Range<Integer> {
 
     public Pair<Range<Integer>, Range<Integer>> split() {
         int mid = (low + high) / 2;
-        return new Pair<Range<Integer>, Range<Integer>>(new IndexRange(low, mid, threshold),
-                                                        new IndexRange(mid, high, threshold));
+        return new Pair<>(new IndexRange(low, mid, threshold),
+                new IndexRange(mid, high, threshold));
     }
 
     public Iterator<Integer> iterator() {

@@ -1,4 +1,4 @@
-package net.sviglas.meridian;
+package net.sviglas.meridian.task;
 
 import java.util.Iterator;
 
@@ -21,7 +21,7 @@ public class LList <K> {
     }
 
     public LList<K> append(K k) {
-        LNode<K> node = new LNode<K>(k);
+        LNode<K> node = new LNode<>(k);
         if (head != null) {
             tail.next = node;
             tail = node;
@@ -57,10 +57,10 @@ public class LList <K> {
 
     public String toString() {
         if (size() == 0) return "";
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         sb.append("[");
         for (Iterator<K> it = iterator(); it.hasNext();)
-            sb.append(it.next() + ",");
+            sb.append(it.next()).append(",");
         sb.setLength(sb.length()-1);
         sb.append("]");
         return sb.toString();
@@ -75,12 +75,12 @@ public class LList <K> {
     }
 
     public static void main(String [] args) {
-        LList<Integer> one = new LList<Integer>();
-        int i = 0;
+        LList<Integer> one = new LList<>();
+        int i;
         for (i = 0; i < 10; i++) one.append(i);
-        LList<Integer> two = new LList<Integer>();
+        LList<Integer> two = new LList<>();
         for (; i < 30; i++) two.append(i);
-        LList<Integer> three = new LList<Integer>();
+        LList<Integer> three = new LList<>();
         for (; i < 60; i++) three.append(i);
                 
         one.append(two);

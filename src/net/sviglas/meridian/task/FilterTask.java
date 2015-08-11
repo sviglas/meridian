@@ -1,4 +1,4 @@
-package net.sviglas.meridian;
+package net.sviglas.meridian.task;
 
 import java.util.List;
 import java.util.concurrent.RecursiveTask;

@@ -1,11 +1,6 @@
-package net.sviglas.meridian;
+package net.sviglas.meridian.task;
 
 import java.util.Iterator;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.SortedMap;
-import java.util.SortedSet;
-import java.util.concurrent.ForkJoinPool;
 
 import net.sviglas.util.Pair;
 
