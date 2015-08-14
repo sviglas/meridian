@@ -2,14 +2,14 @@ package net.sviglas.meridian.task;
 
 import java.util.Iterator;
 
-class LNode <K> {
+class LNode<K> {
     public K value;
     public LNode<K> next;
 
     public LNode(K k) { value = k; next = null; }
 }
 
-public class LList <K> {
+public class LList<K> {
     private LNode<K> head;
     private LNode<K> tail;
     private int size;
