@@ -81,7 +81,7 @@ public class RowStore<T> extends Dataset<T> {
     }
 
     @Override
-    public T get(long i) {
+    public T get(long i) throws IndexOutOfBoundsException, BadAccessException {
         long accumulated = 0;
         RowStoreContainer<T> current = head;
         while (current != null) {
@@ -99,10 +99,9 @@ public class RowStore<T> extends Dataset<T> {
                 + size);
     }
 
-    protected T read(ByteBuffer buffer) {
+    protected T read(ByteBuffer buffer) throws BadAccessException {
         if (isSupportedType(getRecordType())) {
-            Class<T> cls = getRecordType();
-            return cls.cast(readField(buffer, cls));
+            return getRecordType().cast(readField(buffer, getRecordType()));
         }
         else {
             try {
@@ -110,12 +109,15 @@ public class RowStore<T> extends Dataset<T> {
                 for (Field field : getFields())
                     field.set(obj, readField(buffer, field.getType()));
                 return obj;
-            } catch (InstantiationException e) {
-                e.printStackTrace();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
             }
-            return null;
+            catch (InstantiationException e) {
+                throw new BadAccessException("Could not instantiate type "
+                        + "through default constructor: " + e.getMessage());
+            }
+            catch (IllegalAccessException e) {
+                throw new BadAccessException("Could not access field: "
+                        + e.getMessage());
+            }
         }
     }
 
@@ -138,7 +140,7 @@ public class RowStore<T> extends Dataset<T> {
     }
 
     @Override
-    public void append(Dataset<T> d) {
+    public void append(Dataset<T> d) throws BadAccessException {
         if (d.getClass().equals(this.getClass())) {
             RowStore<T> ad = (RowStore<T>) d;
             tail.next = ad.head;
@@ -155,16 +157,19 @@ public class RowStore<T> extends Dataset<T> {
 
     }
 
-    protected void write(ByteBuffer buffer, T t) {
+    protected void write(ByteBuffer buffer, T t) throws BadAccessException {
         if (isSupportedType(t.getClass())) {
             writeField(buffer, t);
         }
         else {
             try {
-                for (Field field : getFields()) writeField(buffer, field.get(t));
+                for (Field field : getFields()) {
+                    writeField(buffer, field.get(t));
+                }
             }
             catch (IllegalAccessException e) {
-                e.printStackTrace();
+                throw new BadAccessException("Could not access field: "
+                        + e.getMessage(), e);
             }
         }
     }

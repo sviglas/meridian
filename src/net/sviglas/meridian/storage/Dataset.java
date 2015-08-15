@@ -116,7 +116,7 @@ public abstract class Dataset<T> implements Iterable<T> {
      * Adds the given element to this dataset.
      * @param t the element to be added.
      */
-    public abstract void add(T t);
+    public abstract void add(T t) throws BadAccessException;
 
     /**
      *
@@ -125,13 +125,14 @@ public abstract class Dataset<T> implements Iterable<T> {
      * @return the element at index i.
      * @throws IndexOutOfBoundsException if the index is out of range.
      */
-    public abstract T get(long i) throws IndexOutOfBoundsException;
+    public abstract T get(long i)
+            throws IndexOutOfBoundsException, BadAccessException;
 
     /**
      * Appends another dataset to this one.
      * @param d the dataset to be appended to this.
      */
-    public abstract void append(Dataset<T> d);
+    public abstract void append(Dataset<T> d) throws BadAccessException;
 
     /**
      * Returns an iterator over the elements of this dataset.

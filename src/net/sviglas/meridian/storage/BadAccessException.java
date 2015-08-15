@@ -7,7 +7,7 @@ package net.sviglas.meridian.storage;
  * <p>
  * Created by sviglas on 14/08/15.
  */
-public class BadAccessException extends Exception {
+public class BadAccessException extends RuntimeException {
     public BadAccessException(String m) {
         super(m);
     }

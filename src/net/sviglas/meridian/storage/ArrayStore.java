@@ -43,7 +43,6 @@ public class ArrayStore<T> extends Dataset<T> {
     public void add(T t) {
         if (head != null) {
             if (tail.contents.size() == defaultAllocation) {
-                System.out.println("allocating container");
                 ArrayStoreContainer<T> newTail = new ArrayStoreContainer<>(
                         new ArrayList<>(defaultAllocation));
                 newTail.contents.add(t);
