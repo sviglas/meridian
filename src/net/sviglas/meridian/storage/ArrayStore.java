@@ -11,144 +11,60 @@ import java.util.Iterator;
  * Created by sviglas on 12/08/15.
  */
 
-class ArrayStoreContainer<T> {
-    public ArrayList<T> contents;
-    public ArrayStoreContainer<T> next;
-    public ArrayStoreContainer(ArrayList<T> a) { contents = a; next = null; }
-}
-
-public class ArrayStore<T> extends Dataset<T> {
-    private static final int DEFAULT_ALLOCATION = 1000;
-    private final int defaultAllocation;
-    private ArrayStoreContainer<T> head;
-    private ArrayStoreContainer<T> tail;
-    private int size;
+public class ArrayStore<T> extends AbstractStore<T> {
 
     public ArrayStore(String n, Class<T> c) throws BadTypeException {
-        this(n, c, DEFAULT_ALLOCATION);
+        super(n, c);
     }
 
     public ArrayStore(String n, Class<T> c, int da) throws BadTypeException {
-        super(n, c);
-        defaultAllocation = da;
-        head = null;
-        tail = null;
-        size = 0;
+        super(n, c, da);
     }
 
     @Override
-    public long size() { return size; }
-
-    @Override
-    public void add(T t) {
-        if (head != null) {
-            if (tail.contents.size() == defaultAllocation) {
-                ArrayStoreContainer<T> newTail = new ArrayStoreContainer<>(
-                        new ArrayList<>(defaultAllocation));
-                newTail.contents.add(t);
-                tail.next = newTail;
-                tail = newTail;
-            }
-            else {
-                tail.contents.add(t);
-            }
-        }
-        else {
-            head = new ArrayStoreContainer<>(
-                    new ArrayList<>(defaultAllocation));
-            head.contents.add(t);
-            tail = head;
-        }
-        size++;
+    protected AbstractStoreContainer<T> allocateContainer() {
+        return new ArrayStoreContainer();
     }
 
-    @Override
-    public T get(long i) throws IndexOutOfBoundsException {
-        long accumulated = 0;
-        ArrayStoreContainer<T> current = head;
-        while (current != null) {
-            if (accumulated + current.contents.size() > i) {
-                return current.contents.get((int) (i - accumulated));
-            }
-            else {
-                accumulated += current.contents.size();
-                current = current.next;
-            }
+    class ArrayStoreContainer extends AbstractStoreContainer<T> {
+        public ArrayList<T> contents;
+        public ArrayStoreContainer() {
+            contents = new ArrayList<>();
         }
-        throw new IndexOutOfBoundsException("Out of bounds: " + i + " > "
-                + size);
-    }
-
-    @Override
-    public void append(Dataset<T> d) {
-        if (d.getClass().equals(this.getClass())) {
-            ArrayStore<T> ad = (ArrayStore<T>) d;
-            tail.next = ad.head;
-            tail = ad.tail;
-            ArrayStoreContainer<T> current = ad.head;
-            while (current != null) {
-                size += current.contents.size();
-                current = current.next;
-            }
+        public int size() { return contents.size(); }
+        public T get(int i) throws BadAccessException {
+            return contents.get(i);
         }
-        else {
-            for (T t : d) add(t);
-        }
-    }
-
-    @Override
-    public Iterator<T> iterator() {
-        return new Iterator<T>() {
-            ArrayStoreContainer<T> currentContainer = head;
-            Iterator<T> currentIterator = (head != null
-                    ? currentContainer.contents.iterator() : null);
-
-            @Override
-            public boolean hasNext() {
-                if (currentIterator == null || currentContainer == null)
-                    return false;
-                if (currentIterator.hasNext()) return true;
-                if (currentContainer != null && currentContainer.next == null) {
-                    currentIterator = null;
-                    return false;
-                }
-                do {
-                    currentContainer = currentContainer.next;
-                }
-                while (currentContainer != null
-                        && currentContainer.contents.size() == 0);
-                if (currentContainer == null) return false;
-                currentIterator = currentContainer.contents.iterator();
-                return currentIterator.hasNext();
-            }
-
-            @Override
-            public T next() {
-                return (currentIterator != null
-                        ? currentIterator.next() : null);
-            }
-        };
+        public void add(T t) throws BadAccessException { contents.add(t); }
     }
 
     public static void main(String [] s) {
+        class TestClass {
+            private int key;
+            private long value;
+            public TestClass() { this(0, 0); }
+            public TestClass(int k, long v) { key = k; value = v; }
+            public String toString() { return "<" + key + ", " + value + ">"; }
+        }
         try {
-            ArrayStore<Integer> lala = new ArrayStore<>("lala", Integer.class, 10);
-            ArrayStore<Integer> koko = new ArrayStore<>("koko", Integer.class, 10);
-            for (int i = 0; i < 100; i++) lala.add(i);
-            for (int i = 1000; i < 1100; i++) koko.add(i);
-            for (int i : lala) System.out.println("lala: " + i);
-            System.out.println("lala size: " + lala.size());
-            for (int i : koko) System.out.println("koko: " + i);
-            System.out.println("koko size: " + koko.size());
-            lala.append(koko);
-            for (int i : lala) System.out.println("lala: " + i);
-            System.out.println("lala size: " + lala.size());
-            System.out.println("at 150: " + lala.get(150    ));
+            ArrayStore<TestClass> foo =
+                    new ArrayStore<>("foo", TestClass.class, 10);
+            ArrayStore<TestClass> bar =
+                    new ArrayStore<>("bar", TestClass.class, 10);
+            for (int i = 0; i < 100; i++) foo.add(new TestClass(i, i*i));
+            for (int i = 1000; i < 1100; i++) bar.add(new TestClass(i, i*i));
+            for (TestClass i : foo) System.out.println("foo: " + i);
+            System.out.println("foo size: " + foo.size());
+            for (TestClass i : bar) System.out.println("bar: " + i);
+            System.out.println("bar size: " + bar.size());
+            foo.append(bar);
+            for (TestClass i : foo) System.out.println("foo: " + i);
+            System.out.println("foo size: " + foo.size());
+            System.out.println("at 150: " + foo.get(150));
         }
         catch (Exception e) {
             System.err.println("Exception " + e.getMessage());
             e.printStackTrace(System.err);
         }
     }
-
 }

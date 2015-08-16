@@ -18,12 +18,19 @@ public abstract class Dataset<T> implements Iterable<T> {
     static {
         Map<Class<?>, Integer> theMap = new HashMap<>();
         theMap.put(Byte.class, 1);
+        theMap.put(byte.class, 1);
         theMap.put(Short.class, 2);
+        theMap.put(short.class, 2);
         theMap.put(Character.class, 2);
+        theMap.put(char.class, 2);
         theMap.put(Integer.class, 4);
+        theMap.put(int.class, 4);
         theMap.put(Long.class, 8);
+        theMap.put(long.class, 8);
         theMap.put(Float.class, 4);
+        theMap.put(float.class, 4);
         theMap.put(Double.class, 8);
+        theMap.put(double.class, 8);
         SUPPORTED_TYPES = Collections.unmodifiableMap(theMap);
     }
     private final static Catalog catalog = Catalog.getInstance();
@@ -80,6 +87,15 @@ public abstract class Dataset<T> implements Iterable<T> {
         fields = recordType.getDeclaredFields();
         elementSize = 0;
         for (Field field : fields) {
+            // hack maybe
+            try {
+                field.setAccessible(true);
+            }
+            catch (SecurityException se) {
+                throw new BadTypeException("Could not change accessibility "
+                        + "through reflection for: " + field.getName() + ": "
+                        + se.getMessage());
+            }
             Class<?> type = field.getType();
             if (! isSupportedType(type)) {
                 throw new BadTypeException("Type: " + type + " is not "

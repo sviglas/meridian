@@ -13,268 +13,172 @@ import java.util.Map;
  * Created by sviglas on 14/08/15.
  */
 
-class ColumnStoreContainer<T> {
-    protected static final String DEFAULT_NAME = "COLUMN";
-    protected Class<T> type;
-    protected Field [] fields;
-    public ColumnStoreContainer<T> next;
-    public int occupied;
-    public Map<String, Object> columns;
-    private boolean primitiveType;
-
-    public ColumnStoreContainer(Class<T> t, int a) {
-        type = t;
-        fields = null;
-        columns = new HashMap<>();
-        columns.put(DEFAULT_NAME, makeColumn(type, a));
-        primitiveType = true;
-    }
-
-    public ColumnStoreContainer(Class<T> t, Field [] fs, int a) {
-        type = t;
-        fields = fs;
-        columns = new HashMap<>();
-        for (Field f : fields) {
-            columns.put(f.getName(), makeColumn(f.getType(), a));
-        }
-        primitiveType = false;
-    }
-
-    protected Object makeColumn(Class<?> cls, int alloc) {
-        if (cls.equals(Byte.class))
-            return new byte [alloc];
-        else if (cls.equals(Short.class))
-            return new short [alloc];
-        else if (cls.equals(Character.class))
-            return new char [alloc];
-        else if (cls.equals(Integer.class))
-            return new int [alloc];
-        else if (cls.equals(Long.class))
-            return new long [alloc];
-        else if (cls.equals(Float.class))
-            return new float [alloc];
-        else if (cls.equals(Double.class))
-            return new double [alloc];
-        return null;
-    }
-
-    public T get(int i) throws BadAccessException {
-        if (primitiveType) {
-            return type.cast(getField(DEFAULT_NAME, type, i));
-        }
-        else {
-            try {
-                T obj = type.newInstance();
-                for (Field field : fields) {
-                    field.set(obj, getField(field.getName(),
-                            field.getType(), i));
-                }
-                return obj;
-            }
-            catch (InstantiationException e) {
-                throw new BadAccessException("Could not instantiate type "
-                        + "through default constructor: " + e.getMessage());
-            } catch (IllegalAccessException e) {
-                throw new BadAccessException("Could not access field: "
-                        + e.getMessage());
-            }
-        }
-    }
-
-    protected Object getField(String n, Class<?> cls, int i) {
-        Object o = columns.get(n);
-        if (cls.equals(Byte.class))
-            return ((byte []) o)[i];
-        else if (cls.equals(Short.class))
-            return ((short []) o)[i];
-        else if (cls.equals(Character.class))
-            return ((char []) o)[i];
-        else if (cls.equals(Integer.class))
-            return ((int []) o)[i];
-        else if (cls.equals(Long.class))
-            return ((long []) o)[i];
-        else if (cls.equals(Float.class))
-            return ((float []) o)[i];
-        else if (cls.equals(Double.class))
-            return ((double []) o)[i];
-        return null;
-    }
-
-    protected void add(T t) {
-        if (primitiveType) {
-            addField(DEFAULT_NAME, type, t);
-        }
-        else {
-            try {
-                for (Field field : fields) {
-                    addField(field.getName(), field.getType(), field.get(t));
-                }
-            }
-            catch (IllegalAccessException e) {
-                throw new BadAccessException("Could not access field: "
-                        + e.getMessage(), e);
-            }
-        }
-        occupied++;
-    }
-
-    protected void addField(String n, Class<?> cls, Object v) {
-        Object o = columns.get(n);
-        if (cls.equals(Byte.class))
-            ((byte []) o)[occupied] = (byte) v;
-        else if (cls.equals(Short.class))
-            ((short []) o)[occupied] = (short) v;
-        else if (cls.equals(Character.class))
-            ((char []) o)[occupied] = (char) v;
-        else if (cls.equals(Integer.class))
-            ((int []) o)[occupied] = (int) v;
-        else if (cls.equals(Long.class))
-            ((long []) o)[occupied] = (long) v;
-        else if (cls.equals(Float.class))
-            ((float []) o)[occupied] = (float) v;
-        else if (cls.equals(Double.class))
-            ((double []) o)[occupied] = (double) v;
-    }
-}
 
 
-public class ColumnStore<T> extends Dataset<T> {
-    private static final int DEFAULT_ALLOCATION = 1000;
-    private final int defaultAllocation;
-    private ColumnStoreContainer<T> head;
-    private ColumnStoreContainer<T> tail;
-    private int size;
+
+public class ColumnStore<T> extends AbstractStore<T> {
 
     public ColumnStore(String n, Class<T> c) throws BadTypeException {
-        this(n, c, DEFAULT_ALLOCATION);
+        super(n, c);
     }
 
     public ColumnStore(String n, Class<T> c, int da) throws BadTypeException {
-        super(n, c);
-        defaultAllocation = da;
-        head = null;
-        tail = null;
-        size = 0;
+        super(n, c, da);
     }
 
     @Override
-    public long size() { return size; }
+    protected AbstractStoreContainer<T> allocateContainer() {
+        return new ColumnStoreContainer();
+    }
 
-    @Override
-    public void add(T t) throws BadAccessException {
-        if (head != null) {
-            if (tail.occupied == defaultAllocation) {
-                ColumnStoreContainer<T> newTail = allocateContainer();
-                newTail.add(t);
-                tail.next = newTail;
-                tail = newTail;
+    class ColumnStoreContainer extends AbstractStoreContainer<T> {
+        protected static final String DEFAULT_NAME = "COLUMN";
+        public Map<String, Object> columns;
+        public int occupied;
+
+        public ColumnStoreContainer() {
+            columns = new HashMap<>();
+            if (isSupportedType(getRecordType())) {
+                columns.put(DEFAULT_NAME, makeColumn(getRecordType(),
+                        getAllocationSize()));
             }
             else {
-                tail.add(t);
+                for (Field f : getFields()) {
+                    columns.put(f.getName(), makeColumn(f.getType(),
+                            getAllocationSize()));
+                }
             }
         }
-        else {
-            head = allocateContainer();
-            head.add(t);
-            tail = head;
+
+        protected Object makeColumn(Class<?> cls, int alloc) {
+            if (cls.equals(Byte.class) || cls.equals(byte.class))
+                return new byte [alloc];
+            else if (cls.equals(Short.class) || cls.equals(short.class))
+                return new short [alloc];
+            else if (cls.equals(Character.class) || cls.equals(char.class))
+                return new char [alloc];
+            else if (cls.equals(Integer.class) || cls.equals(int.class))
+                return new int [alloc];
+            else if (cls.equals(Long.class) || cls.equals(long.class))
+                return new long [alloc];
+            else if (cls.equals(Float.class) || cls.equals(float.class))
+                return new float [alloc];
+            else if (cls.equals(Double.class) || cls.equals(double.class))
+                return new double [alloc];
+            return null;
         }
-        size++;
-    }
 
-    protected ColumnStoreContainer<T> allocateContainer() {
-        if (isSupportedType(getRecordType()))
-            return new ColumnStoreContainer<>(getRecordType(),
-                    defaultAllocation);
-        else
-            return new ColumnStoreContainer<>(getRecordType(), getFields(),
-                    defaultAllocation);
-    }
+        @Override
+        public int size() {
+            return occupied;
+        }
 
-    @Override
-    public T get(long i) throws IndexOutOfBoundsException, BadAccessException {
-        long accumulated = 0;
-        ColumnStoreContainer<T> current = head;
-        while (current != null) {
-            if (accumulated + current.occupied > i) {
-                return current.get((int) (i - accumulated));
+        @Override
+        public T get(int i) throws BadAccessException {
+            if (isSupportedType(getRecordType())) {
+                return getRecordType().cast(getField(DEFAULT_NAME,
+                        getRecordType(), i));
             }
             else {
-                accumulated += current.occupied;
-                current = current.next;
+                try {
+                    T obj = getRecordType().newInstance();
+                    for (Field field : getFields()) {
+                        field.set(obj, getField(field.getName(),
+                                field.getType(), i));
+                    }
+                    return obj;
+                }
+                catch (InstantiationException e) {
+                    throw new BadAccessException("Could not instantiate type "
+                            + "through default constructor: " + e.getMessage());
+                } catch (IllegalAccessException e) {
+                    throw new BadAccessException("Could not access field: "
+                            + e.getMessage());
+                }
             }
         }
-        throw new IndexOutOfBoundsException("Out of bounds: " + i + " > "
-                + size);
-    }
 
-    @Override
-    public void append(Dataset<T> d) throws BadAccessException {
-        if (d.getClass().equals(this.getClass())) {
-            ColumnStore<T> cd = (ColumnStore<T>) d;
-            tail.next = cd.head;
-            tail = cd.tail;
-            ColumnStoreContainer<T> current = cd.head;
-            while (current != null) {
-                size += current.occupied;
-                current = current.next;
-            }
+        protected Object getField(String n, Class<?> cls, int i) {
+            Object o = columns.get(n);
+            if (cls.equals(Byte.class) || cls.equals(byte.class))
+                return ((byte []) o)[i];
+            else if (cls.equals(Short.class) || cls.equals(short.class))
+                return ((short []) o)[i];
+            else if (cls.equals(Character.class) || cls.equals(char.class))
+                return ((char []) o)[i];
+            else if (cls.equals(Integer.class) || cls.equals(int.class))
+                return ((int []) o)[i];
+            else if (cls.equals(Long.class) || cls.equals(long.class))
+                return ((long []) o)[i];
+            else if (cls.equals(Float.class) || cls.equals(float.class))
+                return ((float []) o)[i];
+            else if (cls.equals(Double.class) || cls.equals(double.class))
+                return ((double []) o)[i];
+            return null;
         }
-        else {
-            for (T t : d) add(t);
+
+        @Override
+        public void add(T t) throws BadAccessException {
+            if (isSupportedType(getRecordType())) {
+                addField(DEFAULT_NAME, getRecordType(), t);
+            }
+            else {
+                try {
+                    for (Field field : getFields()) {
+                        addField(field.getName(), field.getType(),
+                                field.get(t));
+                    }
+                }
+                catch (IllegalAccessException e) {
+                    throw new BadAccessException("Could not access field: "
+                            + e.getMessage(), e);
+                }
+            }
+            occupied++;
         }
-    }
 
-    @Override
-    public Iterator<T> iterator() {
-        return new Iterator<T>() {
-            ColumnStoreContainer<T> currentContainer = head;
-            int currentCounter = 0;
-
-            @Override
-            public boolean hasNext() {
-                if (currentContainer == null) return false;
-                if (currentCounter < currentContainer.occupied) return true;
-                if (currentContainer.next == null) {
-                    currentContainer = null;
-                    currentCounter = 0;
-                    return false;
-                }
-                do {
-                    currentContainer = currentContainer.next;
-                }
-                while (currentContainer != null
-                        && currentContainer.occupied == 0);
-                if (currentContainer == null) return false;
-                currentCounter = 0;
-                return true;
-            }
-
-            @Override
-            public T next() {
-                if (currentContainer != null) {
-                    return currentContainer.get(currentCounter++);
-                }
-                return null;
-            }
-        };
+        protected void addField(String n, Class<?> cls, Object v) {
+            Object o = columns.get(n);
+            if (cls.equals(Byte.class) || cls.equals(byte.class))
+                ((byte []) o)[occupied] = (byte) v;
+            else if (cls.equals(Short.class) || cls.equals(short.class))
+                ((short []) o)[occupied] = (short) v;
+            else if (cls.equals(Character.class) || cls.equals(char.class))
+                ((char []) o)[occupied] = (char) v;
+            else if (cls.equals(Integer.class) || cls.equals(int.class))
+                ((int []) o)[occupied] = (int) v;
+            else if (cls.equals(Long.class) || cls.equals(long.class))
+                ((long []) o)[occupied] = (long) v;
+            else if (cls.equals(Float.class) || cls.equals(float.class))
+                ((float []) o)[occupied] = (float) v;
+            else if (cls.equals(Double.class) || cls.equals(double.class))
+                ((double []) o)[occupied] = (double) v;
+        }
     }
 
     public static void main(String [] s) {
+        class TestClass {
+            private int key;
+            private long value;
+            public TestClass() { this(0, 0); }
+            public TestClass(int k, long v) { key = k; value = v; }
+            public String toString() { return "<" + key + ", " + value + ">"; }
+        }
         try {
-            ColumnStore<Integer> lala =
-                    new ColumnStore<>("lala", Integer.class, 10);
-            ColumnStore<Integer> koko =
-                    new ColumnStore<>("koko", Integer.class, 10);
-            for (int i = 0; i < 100; i++) lala.add(i);
-            for (int i = 1000; i < 1100; i++) koko.add(i);
-            for (int i : lala) System.out.println("lala: " + i);
-            System.out.println("lala size: " + lala.size());
-            for (int i : koko) System.out.println("koko: " + i);
-            System.out.println("koko size: " + koko.size());
-            lala.append(koko);
-            for (int i : lala) System.out.println("lala: " + i);
-            System.out.println("lala size: " + lala.size());
-            System.out.println("at 150: " + lala.get(150    ));
+            ColumnStore<TestClass> foo =
+                    new ColumnStore<>("foo", TestClass.class, 10);
+            ColumnStore<TestClass> bar =
+                    new ColumnStore<>("bar", TestClass.class, 10);
+            for (int i = 0; i < 100; i++) foo.add(new TestClass(i, i*i));
+            for (int i = 1000; i < 1100; i++) bar.add(new TestClass(i, i*i));
+            for (TestClass i : foo) System.out.println("foo: " + i);
+            System.out.println("foo size: " + foo.size());
+            for (TestClass i : bar) System.out.println("bar: " + i);
+            System.out.println("barsize: " + bar.size());
+            foo.append(bar);
+            for (TestClass i : foo) System.out.println("foo: " + i);
+            System.out.println("foosize: " + foo.size());
+            System.out.println("at 150: " + foo.get(150));
         }
         catch (Exception e) {
             System.err.println("Exception " + e.getMessage());
