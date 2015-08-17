@@ -20,18 +20,17 @@ public abstract class AbstractStore<T> extends Dataset<T> {
      * Constructs a dataset with the given name, hosting element of the given
      * type. The type must have a parameter-less constructor.
      *
-     * @param n the name of the dataset.
      * @param c the type of the elements this dataset hosts.
      * @throws BadTypeException if the element type is not acceptable (i.e., it
      *                          does not comprise primitive types and does not
      *                          have a parameter-less constructor).
      */
-    public AbstractStore(String n, Class<T> c) throws BadTypeException {
-        this(n, c, DEFAULT_ALLOCATION);
+    public AbstractStore(Class<T> c) throws BadTypeException {
+        this(c, DEFAULT_ALLOCATION);
     }
 
-    public AbstractStore(String n, Class<T> c, int da) throws BadTypeException {
-        super(n, c);
+    public AbstractStore(Class<T> c, int da) throws BadTypeException {
+        super(c);
         allocationSize = fixAllocationSize(da);
         head = null;
         tail = null;

@@ -7,7 +7,7 @@ package net.sviglas.meridian.storage;
  * <p>
  * Created by sviglas on 12/08/15.
  */
-public class BadTypeException extends Exception {
+public class BadTypeException extends RuntimeException {
     /**
      * Constructs a new bad type exception.
      * @param m the error message.

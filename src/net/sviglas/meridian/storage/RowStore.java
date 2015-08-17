@@ -15,12 +15,12 @@ import java.util.Iterator;
 public class RowStore<T> extends AbstractStore<T> {
     private static final int CHUNK_SIZE = 4096;
 
-    public RowStore(String name, Class<T> type) throws BadTypeException {
-        super(name, type);
+    public RowStore(Class<T> type) throws BadTypeException {
+        super(type);
     }
 
-    public RowStore(String n, Class<T> c, int da) throws BadTypeException {
-        super(n, c, da);
+    public RowStore(Class<T> c, int da) throws BadTypeException {
+        super(c, da);
     }
 
     protected int fixAllocationSize(int da) {
@@ -152,10 +152,8 @@ public class RowStore<T> extends AbstractStore<T> {
             public String toString() { return "<" + key + ", " + value + ">"; }
         }
         try {
-            RowStore<TestClass> foo =
-                    new RowStore<>("foo", TestClass.class, 10);
-            RowStore<TestClass> bar =
-                    new RowStore<>("bar", TestClass.class, 10);
+            RowStore<TestClass> foo = new RowStore<>(TestClass.class, 10);
+            RowStore<TestClass> bar = new RowStore<>(TestClass.class, 10);
             for (int i = 0; i < 100; i++) foo.add(new TestClass(i, i*i));
             for (int i = 1000; i < 1100; i++) bar.add(new TestClass(i, i*i));
             for (TestClass i : foo) System.out.println("foo: " + i);

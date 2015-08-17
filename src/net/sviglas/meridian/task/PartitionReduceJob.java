@@ -1,23 +1,22 @@
 package net.sviglas.meridian.task;
 
-import java.util.List;
-import java.util.ArrayList;
-import java.util.SortedMap;
-import java.util.SortedSet;
+import java.util.*;
 
 import java.util.concurrent.ForkJoinPool;
 
+import net.sviglas.meridian.storage.ArrayStore;
+import net.sviglas.meridian.storage.Dataset;
 import net.sviglas.util.Pair;
 
 public class PartitionReduceJob<TIn,
         KIntermediate extends Comparable<? super KIntermediate>, VIntermediate,
         VOut> {
-    private List<TIn> input;
+    private Dataset<TIn> input;
     //private Extractor<TIn, KInput, VInput> extractor;
     private PartitionFunction<TIn, KIntermediate, VIntermediate> partitioner;
     private ReduceFunction<KIntermediate, VIntermediate, VOut> reducer;
 
-    public PartitionReduceJob(List<TIn> i,
+    public PartitionReduceJob(Dataset<TIn> i,
                               PartitionFunction<TIn,
                                       KIntermediate, VIntermediate> p,
                               ReduceFunction<KIntermediate, VIntermediate,
@@ -28,11 +27,11 @@ public class PartitionReduceJob<TIn,
     }
                         
 
-    public LList<Pair<KIntermediate, VOut>> execute(ForkJoinPool pool) {
+    public SortedMap<KIntermediate, VOut> execute(ForkJoinPool pool) {
         PartitionTask<TIn, KIntermediate, VIntermediate> partitionTask =
             new PartitionTask<>(input, new IndexRange(0, input.size()),
                           partitioner);
-        SortedMap<KIntermediate, LList<VIntermediate>> partitions =
+        SortedMap<KIntermediate, Dataset<VIntermediate>> partitions =
             pool.invoke(partitionTask);
         KeyRange<KIntermediate> kr =
                 new KeyRange<>((SortedSet<KIntermediate>) partitions.keySet());
@@ -46,13 +45,32 @@ public class PartitionReduceJob<TIn,
             ForkJoinPool forkJoinPool = new ForkJoinPool();
             
             int limit = 100;
-            List<Integer> list = new ArrayList<>();
+            Dataset<Integer> list = new ArrayStore<>(Integer.class);
             for (int i = 0; i < limit; i++) list.add((i % 10)*(i % 10));
 
-            Identity<Integer> identity = new Identity<>();
             PartitionReduceJob<Integer, Integer, Integer, String>
-                job = new PartitionReduceJob<>(list, identity, identity);
-            LList<Pair<Integer, String>> rout = job.execute(forkJoinPool);
+                job = new PartitionReduceJob<>(list,
+                    new PartitionFunction<Integer, Integer, Integer>(
+                            Integer.class, Integer.class, Integer.class) {
+                        @Override
+                        public Pair<Integer, Integer> partition(Integer t) {
+                            return new Pair<>(t, t);
+                        }
+                    },
+                    new ReduceFunction<Integer, Integer, String>(
+                            Integer.class, Integer.class, String.class) {
+                        @Override
+                        public String reduce(Integer k, Iterator<Integer> v) {
+                            StringBuilder sb = new StringBuilder();
+                            sb.append("[").append(k).append("->");
+                            for (; v.hasNext();) sb.append(v.next()).append("_");
+                            sb.setLength(sb.length()-1);
+                            sb.append("]");
+                            return sb.toString();
+                        }
+                    }
+            );
+            SortedMap<Integer, String> rout = job.execute(forkJoinPool);
             System.out.println(rout);
             System.out.println(rout.size());
         }

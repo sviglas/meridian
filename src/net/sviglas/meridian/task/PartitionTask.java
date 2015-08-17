@@ -1,65 +1,75 @@
 package net.sviglas.meridian.task;
 
-import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.RecursiveTask;
 
+import net.sviglas.meridian.storage.Dataset;
 import net.sviglas.util.Pair;
 
 public class PartitionTask<TIn, KOut extends Comparable<? super KOut>, VOut>
-    extends RecursiveTask<SortedMap<KOut, LList<VOut>>> {
-    
-    private List<TIn> input;
-    private Range<Integer> range;
+        extends Task<SortedMap<KOut, Dataset<VOut>>> {
+    private Dataset<TIn> input;
+    private Range<Long> range;
     private PartitionFunction<TIn, KOut, VOut> partitioner;
     
-    public PartitionTask(List<TIn> i, Range<Integer> r,
+    public PartitionTask(Dataset<TIn> i, Range<Long> r,
                          PartitionFunction<TIn, KOut, VOut> p) {
+        this(i, r, p, new DefaultDatasetConstructor());
+    }
+
+    public PartitionTask(Dataset<TIn> i, Range<Long> r,
+                         PartitionFunction<TIn, KOut, VOut> p,
+                         DatasetConstructor ctor) {
+        super(ctor);
         input = i;
         range = r;
         partitioner = p;
     }
 
     @Override
-    protected SortedMap<KOut, LList<VOut>> compute() {
+    protected SortedMap<KOut, Dataset<VOut>> compute() {
         if (range.smallEnough()) {
-            SortedMap<KOut, LList<VOut>> localGroup = new TreeMap<>();
-            for (TIn t : input.subList(range.begin(), range.end())) {
-                Pair<KOut, VOut> kvout = partitioner.apply(t);
-                LList<VOut> values = localGroup.get(kvout.first);
+            SortedMap<KOut, Dataset<VOut>> localGroup = new TreeMap<>();
+            for (long index = range.begin(); index < range.end(); index++) {
+                TIn t = input.get(index);
+                Pair<KOut, VOut> kvout = partitioner.partition(t);
+                Dataset<VOut> values = localGroup.get(kvout.first);
                 if (values != null)
-                    values.append(kvout.second);
+                    values.add(kvout.second);
                 else {
-                    values = new LList<>();
-                    values.append(kvout.second);
+                    values = getDatasetConstructor().constructDataset(
+                            partitioner.getOutputValueType());
+                    values.add(kvout.second);
                     localGroup.put(kvout.first, values);
-                }                
+                }
             }
             return localGroup;
         }
         else {
-            Pair<Range<Integer>, Range<Integer>> ranges = range.split();
+            Pair<Range<Long>, Range<Long>> ranges = range.split();
             PartitionTask<TIn, KOut, VOut> left =
-                new PartitionTask<>(input, ranges.first, partitioner);
+                new PartitionTask<>(input, ranges.first,
+                        partitioner, getDatasetConstructor());
             PartitionTask<TIn, KOut, VOut> right =
-                new PartitionTask<>(input, ranges.second, partitioner);
+                new PartitionTask<>(input, ranges.second,
+                        partitioner, getDatasetConstructor());
             left.fork();
             right.fork();
             return merge(left.join(), right.join());
         }
     }
     
-    protected SortedMap<KOut, LList<VOut>>
-            merge(SortedMap<KOut, LList<VOut>> left,
-                  SortedMap<KOut, LList<VOut>> right) {
-        SortedMap<KOut, LList<VOut>> small = left;
-        SortedMap<KOut, LList<VOut>> big = right;
+    protected SortedMap<KOut, Dataset<VOut>>
+            merge(SortedMap<KOut, Dataset<VOut>> left,
+                  SortedMap<KOut, Dataset<VOut>> right) {
+        SortedMap<KOut, Dataset<VOut>> small = left;
+        SortedMap<KOut, Dataset<VOut>> big = right;
         if (right.size() < left.size()) { small = right; big = left; }
-        for (Map.Entry<KOut, LList<VOut>> entry : small.entrySet()) {
-            LList<VOut> smallList = entry.getValue();
-            LList<VOut> bigList = big.get(entry.getKey());
+        for (Map.Entry<KOut, Dataset<VOut>> entry : small.entrySet()) {
+            Dataset<VOut> smallList = entry.getValue();
+            Dataset<VOut> bigList = big.get(entry.getKey());
             if (bigList != null) bigList.append(smallList);
             else big.put(entry.getKey(), smallList);
         }

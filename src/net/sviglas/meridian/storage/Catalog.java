@@ -2,6 +2,7 @@ package net.sviglas.meridian.storage;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * This is part of the Meridian code base, licensed under the
@@ -12,7 +13,7 @@ import java.util.Map;
  */
 public class Catalog {
     private static Catalog ourInstance = new Catalog();
-    private static final Map<String, Dataset<?>> datasets = new HashMap<>();
+    private static final Map<UUID, Dataset<?>> datasets = new HashMap<>();
 
     public static Catalog getInstance() {
         return ourInstance;
@@ -21,57 +22,53 @@ public class Catalog {
     private Catalog() {
     }
 
-    public static <T> ArrayStore<T> createArrayStore(String name, Class<T> type)
+    public static <T> ArrayStore<T> createArrayStore(Class<T> type)
             throws BadTypeException {
-        ArrayStore<T> as = new ArrayStore<>(name, type);
-        datasets.put(name, as);
+        ArrayStore<T> as = new ArrayStore<>(type);
+        datasets.put(as.getIdentifier(), as);
         return as;
     }
 
-    public static <T> ArrayStore<T> createArrayStore(String name,
-                                                     Class<T> type,
+    public static <T> ArrayStore<T> createArrayStore(Class<T> type,
                                                      int da)
             throws BadTypeException {
-        ArrayStore<T> as = new ArrayStore<>(name, type);
-        datasets.put(name, as);
+        ArrayStore<T> as = new ArrayStore<>(type);
+        datasets.put(as.getIdentifier(), as);
         return as;
     }
 
-    public static <T> RowStore<T> createRowStore(String name, Class<T> type)
+    public static <T> RowStore<T> createRowStore(Class<T> type)
             throws BadTypeException {
-        RowStore<T> as = new RowStore<>(name, type);
-        datasets.put(name, as);
+        RowStore<T> as = new RowStore<>(type);
+        datasets.put(as.getIdentifier(), as);
         return as;
     }
 
-    public static <T> RowStore<T> createRowStore(String name,
-                                                 Class<T> type,
+    public static <T> RowStore<T> createRowStore(Class<T> type,
                                                  int da)
             throws BadTypeException {
-        RowStore<T> as = new RowStore<>(name, type);
-        datasets.put(name, as);
+        RowStore<T> as = new RowStore<>(type);
+        datasets.put(as.getIdentifier(), as);
         return as;
     }
 
-    public static <T> ColumnStore<T> createColumnStore(String name,
-                                                       Class<T> type)
+    public static <T> ColumnStore<T> createColumnStore(Class<T> type)
             throws BadTypeException {
-        ColumnStore<T> as = new ColumnStore<>(name, type);
-        datasets.put(name, as);
+        ColumnStore<T> as = new ColumnStore<>(type);
+        datasets.put(as.getIdentifier(), as);
         return as;
     }
 
-    public static <T> ColumnStore<T> createColumnStore(String name,
-                                                       Class<T> type,
+    public static <T> ColumnStore<T> createColumnStore(Class<T> type,
                                                        int da)
             throws BadTypeException {
-        ColumnStore<T> as = new ColumnStore<>(name, type);
-        datasets.put(name, as);
+        ColumnStore<T> as = new ColumnStore<>(type);
+        datasets.put(as.getIdentifier(), as);
         return as;
     }
 
-    public static Dataset<?> getDataset(String name) {
-        return datasets.get(name);
+    public static Dataset<?> getDataset(UUID uuid) {
+        return datasets.get(uuid);
     }
 
 }

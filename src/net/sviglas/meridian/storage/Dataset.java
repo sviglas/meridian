@@ -1,10 +1,7 @@
 package net.sviglas.meridian.storage;
 
 import java.lang.reflect.Field;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 /**
  * This is part of the Meridian code base, licensed under the
@@ -33,8 +30,7 @@ public abstract class Dataset<T> implements Iterable<T> {
         theMap.put(double.class, 8);
         SUPPORTED_TYPES = Collections.unmodifiableMap(theMap);
     }
-    private final static Catalog catalog = Catalog.getInstance();
-    private final String name;
+    private final UUID identifier;
     private Class<T> recordType;
     private int elementSize;
     private Field [] fields;
@@ -42,17 +38,18 @@ public abstract class Dataset<T> implements Iterable<T> {
     /**
      * Constructs a dataset with the given name, hosting element of the given
      * type. The type must have a parameter-less constructor.
-     * @param n the name of the dataset.
      * @param c the type of the elements this dataset hosts.
      * @throws BadTypeException if the element type is not acceptable (i.e., it
      * does not comprise primitive types and does not have a parameter-less
      * constructor).
      */
-    public Dataset(String n, Class<T> c) throws BadTypeException {
-        name = n;
+    public Dataset(Class<T> c) throws BadTypeException {
+        identifier = UUID.randomUUID();
         recordType = c;
         validateType();
     }
+
+    public UUID getIdentifier() { return identifier; }
 
     public int getElementSize() {
         return elementSize;
@@ -114,13 +111,13 @@ public abstract class Dataset<T> implements Iterable<T> {
         return recordType;
     }
 
-    /**
-     * Returns the catalog responsible for maintaining this dataset.
-     * @return the catalog responsible for maintaining this dataset.
-     */
-    protected Catalog getCatalog() {
-        return catalog;
-    }
+    // /**
+    // * Returns the catalog responsible for maintaining this dataset.
+    // * @return the catalog responsible for maintaining this dataset.
+    // */
+    //protected Catalog getCatalog() {
+    //    return catalog;
+    //}
 
     /**
      * Returns the number of elements in this dataset.

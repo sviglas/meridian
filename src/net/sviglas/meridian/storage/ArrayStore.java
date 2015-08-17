@@ -13,12 +13,12 @@ import java.util.Iterator;
 
 public class ArrayStore<T> extends AbstractStore<T> {
 
-    public ArrayStore(String n, Class<T> c) throws BadTypeException {
-        super(n, c);
+    public ArrayStore(Class<T> c) throws BadTypeException {
+        super(c);
     }
 
-    public ArrayStore(String n, Class<T> c, int da) throws BadTypeException {
-        super(n, c, da);
+    public ArrayStore(Class<T> c, int da) throws BadTypeException {
+        super(c, da);
     }
 
     @Override
@@ -47,10 +47,8 @@ public class ArrayStore<T> extends AbstractStore<T> {
             public String toString() { return "<" + key + ", " + value + ">"; }
         }
         try {
-            ArrayStore<TestClass> foo =
-                    new ArrayStore<>("foo", TestClass.class, 10);
-            ArrayStore<TestClass> bar =
-                    new ArrayStore<>("bar", TestClass.class, 10);
+            ArrayStore<TestClass> foo = new ArrayStore<>(TestClass.class, 10);
+            ArrayStore<TestClass> bar = new ArrayStore<>(TestClass.class, 10);
             for (int i = 0; i < 100; i++) foo.add(new TestClass(i, i*i));
             for (int i = 1000; i < 1100; i++) bar.add(new TestClass(i, i*i));
             for (TestClass i : foo) System.out.println("foo: " + i);

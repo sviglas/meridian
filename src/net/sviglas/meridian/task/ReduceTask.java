@@ -2,38 +2,39 @@ package net.sviglas.meridian.task;
 
 import java.util.Iterator;
 import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.RecursiveTask;
 
+import net.sviglas.meridian.storage.Dataset;
 import net.sviglas.util.Pair;
 
 public class ReduceTask<KIn, VIn, VOut>
-        extends RecursiveTask<LList<Pair<KIn, VOut>>> {
+        extends Task<SortedMap<KIn, VOut>> {
 
-    private SortedMap<KIn, LList<VIn>> input;
+    private SortedMap<KIn, Dataset<VIn>> input;
     private Range<KIn> range;
     private ReduceFunction<KIn, VIn, VOut> reducer;
 
-    public ReduceTask(SortedMap<KIn, LList<VIn>> i,
+    public ReduceTask(SortedMap<KIn, Dataset<VIn>> i,
                       Range<KIn> r,
                       ReduceFunction<KIn, VIn, VOut> rd) {
+        super();
         input = i;
         range = r;
         reducer = rd;
     }
 
     @Override
-    protected LList<Pair<KIn, VOut>> compute() {
+    protected SortedMap<KIn, VOut> compute() {
         if (range.smallEnough()) {
-            LList<Pair<KIn, VOut>> localList = new LList<>();
+            SortedMap<KIn, VOut> localOutput = new TreeMap<>();
             Iterator<KIn> iterator = range.iterator();
             while (iterator.hasNext()) {
                 KIn key = iterator.next();
-                LList<VIn> value = input.get(key);
-                Pair<KIn, VOut> pair =
-                    new Pair<>(key, reducer.apply(key, value.iterator()));
-                localList.append(pair);
+                Dataset<VIn> value = input.get(key);
+                localOutput.put(key, reducer.reduce(key, value.iterator()));
             }
-            return localList;
+            return localOutput;
         }
         else {
             Pair<Range<KIn>, Range<KIn>> ranges = range.split();
@@ -43,7 +44,9 @@ public class ReduceTask<KIn, VIn, VOut>
                 new ReduceTask<>(input, ranges.second, reducer);
             left.fork();
             right.fork();
-            return left.join().append(right.join());
+            SortedMap<KIn, VOut> localOutput = left.join();
+            localOutput.putAll(right.join());
+            return localOutput;
         }
     }
 }

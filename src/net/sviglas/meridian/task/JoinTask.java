@@ -1,22 +1,34 @@
 package net.sviglas.meridian.task;
 
+import net.sviglas.meridian.storage.Dataset;
 import net.sviglas.util.Pair;
 
 import java.util.*;
-import java.util.concurrent.RecursiveTask;
 
 /**
+ * This is part of the Meridian code base, licensed under the
+ * Apache License 2.0 (see also
+ * http://www.apache.org/licenses/LICENSE-2.0).
+ * <p>
  * Created by sviglas on 10/08/15.
  */
-public class JoinTask<Tl, Tr, TOut> extends RecursiveTask<LList<TOut>> {
-    private List<List<Tl>> leftInput;
-    private List<List<Tr>> rightInput;
+public class JoinTask<Tl, Tr, TOut> extends Task<Dataset<TOut>> {
+    private List<Dataset<Tl>> leftInput;
+    private List<Dataset<Tr>> rightInput;
     private Range<Integer> range;
     private JoinFunction<Tl, Tr, TOut> joiner;
 
-    public JoinTask(List<List<Tl>> l, List<List<Tr>> r,
+    public JoinTask(List<Dataset<Tl>> l, List<Dataset<Tr>> r,
                     Range<Integer> rg,
                     JoinFunction<Tl, Tr, TOut> j) {
+        this(l, r, rg, j, new DefaultDatasetConstructor());
+    }
+
+    public JoinTask(List<Dataset<Tl>> l, List<Dataset<Tr>> r,
+                    Range<Integer> rg,
+                    JoinFunction<Tl, Tr, TOut> j,
+                    DatasetConstructor ctor) {
+        super(ctor);
         leftInput = l;
         rightInput = r;
         range = rg;
@@ -24,12 +36,13 @@ public class JoinTask<Tl, Tr, TOut> extends RecursiveTask<LList<TOut>> {
     }
 
     @Override
-    public LList<TOut> compute() {
+    public Dataset<TOut> compute() {
         if (range.smallEnough()) {
-            LList<TOut> localOut = new LList<>();
+            Dataset<TOut> localOut = getDatasetConstructor().constructDataset(
+                    joiner.getOutputValueType());
             for (int i = range.begin(); i < range.end(); i++) {
-                List<Tl> localLeft = leftInput.get(i);
-                List<Tr> localRight = rightInput.get(i);
+                Dataset<Tl> localLeft = leftInput.get(i);
+                Dataset<Tr> localRight = rightInput.get(i);
                 localJoin(localLeft, localRight, localOut);
             }
             return localOut;
@@ -38,31 +51,36 @@ public class JoinTask<Tl, Tr, TOut> extends RecursiveTask<LList<TOut>> {
             Pair<Range<Integer>, Range<Integer>> ranges = range.split();
             JoinTask<Tl, Tr, TOut> left =
                     new JoinTask<>(leftInput, rightInput,
-                            ranges.first, joiner);
+                            ranges.first, joiner, getDatasetConstructor());
             JoinTask<Tl, Tr, TOut> right =
                     new JoinTask<>(leftInput, rightInput,
-                            ranges.second, joiner);
+                            ranges.second, joiner, getDatasetConstructor());
             left.fork();
             right.fork();
-            return left.join().append(right.join());
+            Dataset<TOut> localOut = left.join();
+            localOut.append(right.join());
+            return localOut;
         }
     }
 
-    protected void localJoin(List<Tl> l, List<Tr> r, LList<TOut> out) {
-        Map<Integer, List<Tl>> leftMap = new HashMap<>();
+    protected void localJoin(Dataset<Tl> l, Dataset<Tr> r, Dataset<TOut> out) {
+        Map<Integer, Dataset<Tl>> leftMap = new HashMap<>();
         for (Tl lr : l) {
             int hash = lr.hashCode();
-            List<Tl> leftBucket = leftMap.get(hash);
-            if (leftBucket == null) leftBucket = new ArrayList<>();
+            Dataset<Tl> leftBucket = leftMap.get(hash);
+            if (leftBucket == null) {
+                leftBucket = getDatasetConstructor().constructDataset(
+                        joiner.getLeftInputType());
+            }
             leftBucket.add(lr);
             leftMap.put(lr.hashCode(), leftBucket);
         }
         for (Tr rr : r) {
-            List<Tl> leftBucket = leftMap.get(rr.hashCode());
+            Dataset<Tl> leftBucket = leftMap.get(rr.hashCode());
             if (leftBucket != null) {
                 for (Tl lr : leftBucket) {
-                    if (joiner.areEqual(lr, rr)) {
-                        out.append(joiner.combine(lr, rr));
+                    if (joiner.equal(lr, rr)) {
+                        out.add(joiner.combine(lr, rr));
                     }
                 }
             }
@@ -70,13 +88,18 @@ public class JoinTask<Tl, Tr, TOut> extends RecursiveTask<LList<TOut>> {
     }
 
     public static void main(String [] args) {
-        List<Integer> left = Arrays.asList(1, 2, 3, 4, 4, 4, 5, 6, 6);
-        List<Integer> right = Arrays.asList(2, 4, 4, 5, 5, 5, 6, 6, 6);
+        Dataset<Integer> left =
+                new net.sviglas.meridian.storage.ArrayStore<>(Integer.class);
+        for (int i = 0; i < 10; i++) for (int j = 0; j < i; j++) left.add(j);
+        Dataset<Integer> right =
+                new net.sviglas.meridian.storage.ArrayStore<>(Integer.class);
+        for (int i = 0; i < 10; i++) for (int j = 0; j < i; j++) left.add(j);
         JoinTask<Integer, Integer, Integer> mt =
                 new JoinTask<>(null, null, null,
-                        new JoinFunction<Integer, Integer, Integer>() {
+                        new JoinFunction<Integer, Integer, Integer>(
+                                Integer.class, Integer.class, Integer.class) {
                             @Override
-                            public boolean areEqual(Integer l, Integer r) {
+                            public boolean equal(Integer l, Integer r) {
                                 return l.compareTo(r) == 0;
                             }
 
@@ -84,8 +107,9 @@ public class JoinTask<Tl, Tr, TOut> extends RecursiveTask<LList<TOut>> {
                             public Integer combine(Integer l, Integer r) {
                                 return l;
                             }
-                        });
-        LList<Integer> out = new LList<>();
+                        }, null);
+        Dataset<Integer> out =
+                new net.sviglas.meridian.storage.ArrayStore<>(Integer.class);
         mt.localJoin(left, right, out);
         System.out.println("output: " + out);
     }

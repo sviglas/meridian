@@ -1,10 +1,26 @@
 package net.sviglas.meridian.task;
 
 /**
+ * This is part of the Meridian code base, licensed under the
+ * Apache License 2.0 (see also
+ * http://www.apache.org/licenses/LICENSE-2.0).
+ * <p>
  * Created by sviglas on 11/08/15.
  */
-public interface FoldFunction<TIn, TOut> {
-    TOut noop();
-    TOut apply(TOut in, TIn n);
-    TOut combine(TOut l, TOut r);
+public abstract class FoldFunction<TIn, TOut> {
+    private Class<TIn> inputType;
+    private Class<TOut> outputType;
+
+    public FoldFunction(Class<TIn> tin, Class<TOut> tout) {
+        inputType = tin;
+        outputType = tout;
+    }
+
+    public Class<TIn> getInputType() { return inputType; }
+
+    public Class<TOut> getOutputType() { return outputType; }
+
+    public abstract TOut noop();
+    public abstract TOut accumulate(TOut in, TIn n);
+    public abstract TOut combine(TOut l, TOut r);
 }

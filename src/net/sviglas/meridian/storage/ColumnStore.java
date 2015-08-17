@@ -13,17 +13,14 @@ import java.util.Map;
  * Created by sviglas on 14/08/15.
  */
 
-
-
-
 public class ColumnStore<T> extends AbstractStore<T> {
 
-    public ColumnStore(String n, Class<T> c) throws BadTypeException {
-        super(n, c);
+    public ColumnStore(Class<T> c) throws BadTypeException {
+        super(c);
     }
 
-    public ColumnStore(String n, Class<T> c, int da) throws BadTypeException {
-        super(n, c, da);
+    public ColumnStore(Class<T> c, int da) throws BadTypeException {
+        super(c, da);
     }
 
     @Override
@@ -165,10 +162,8 @@ public class ColumnStore<T> extends AbstractStore<T> {
             public String toString() { return "<" + key + ", " + value + ">"; }
         }
         try {
-            ColumnStore<TestClass> foo =
-                    new ColumnStore<>("foo", TestClass.class, 10);
-            ColumnStore<TestClass> bar =
-                    new ColumnStore<>("bar", TestClass.class, 10);
+            ColumnStore<TestClass> foo = new ColumnStore<>(TestClass.class, 10);
+            ColumnStore<TestClass> bar = new ColumnStore<>(TestClass.class, 10);
             for (int i = 0; i < 100; i++) foo.add(new TestClass(i, i*i));
             for (int i = 1000; i < 1100; i++) bar.add(new TestClass(i, i*i));
             for (TestClass i : foo) System.out.println("foo: " + i);
