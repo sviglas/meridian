@@ -1,3 +1,11 @@
+/*
+ * This is part of the Meridian code base, licensed under the
+ * Apache License 2.0 (see also
+ * http://www.apache.org/licenses/LICENSE-2.0).
+ * <p>
+ * Created by sviglas on 11/08/15.
+ */
+
 package net.sviglas.meridian.task;
 
 import java.util.*;
@@ -8,14 +16,33 @@ import net.sviglas.meridian.storage.ArrayStore;
 import net.sviglas.meridian.storage.Dataset;
 import net.sviglas.util.Pair;
 
+/**
+ * An example of a partition-reduce job (the equivalent of map-reduce).
+ *
+ * @param <TIn> the input type.
+ * @param <KIntermediate> the type of intermediate keys.
+ * @param <VIntermediate> the type of intermediate values.
+ * @param <VOut> the output type.
+ */
+
 public class PartitionReduceJob<TIn,
-        KIntermediate extends Comparable<? super KIntermediate>, VIntermediate,
-        VOut> {
+        KIntermediate extends Comparable<? super KIntermediate>,
+        VIntermediate, VOut> {
+    // the input dataset
     private Dataset<TIn> input;
-    //private Extractor<TIn, KInput, VInput> extractor;
+    // the partitioner function
     private PartitionFunction<TIn, KIntermediate, VIntermediate> partitioner;
+    // the reducer function
     private ReduceFunction<KIntermediate, VIntermediate, VOut> reducer;
 
+    /**
+     * Constructs a new partition-reduce job given input and appropriate
+     * partitioner and reducer types.
+     *
+     * @param i the input dataset.
+     * @param p the partitioner function.
+     * @param r the reducer function.
+     */
     public PartitionReduceJob(Dataset<TIn> i,
                               PartitionFunction<TIn,
                                       KIntermediate, VIntermediate> p,
@@ -25,8 +52,13 @@ public class PartitionReduceJob<TIn,
         partitioner = p;
         reducer = r;
     }
-                        
 
+    /**
+     * Executes the job over a pool of execution.
+     *
+     * @param pool the execution pool.
+     * @return the output of the job (i.e., the output of the reduce step).
+     */
     public SortedMap<KIntermediate, VOut> execute(ForkJoinPool pool) {
         PartitionTask<TIn, KIntermediate, VIntermediate> partitionTask =
             new PartitionTask<>(input, new IndexRange(0, input.size()),
@@ -40,6 +72,11 @@ public class PartitionReduceJob<TIn,
         return pool.invoke(reduceTask);
     }
 
+    /**
+     * Debug main.
+     *
+     * @param args parameters.
+     */
     public static void main(String [] args) {
         try {
             ForkJoinPool forkJoinPool = new ForkJoinPool();
@@ -63,7 +100,9 @@ public class PartitionReduceJob<TIn,
                         public String reduce(Integer k, Iterator<Integer> v) {
                             StringBuilder sb = new StringBuilder();
                             sb.append("[").append(k).append("->");
-                            for (; v.hasNext();) sb.append(v.next()).append("_");
+                            for (; v.hasNext();) {
+                                sb.append(v.next()).append("_");
+                            }
                             sb.setLength(sb.length()-1);
                             sb.append("]");
                             return sb.toString();

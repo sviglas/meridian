@@ -1,24 +1,59 @@
+/*
+ * This is part of the Meridian code base, licensed under the
+ * Apache License 2.0 (see also
+ * http://www.apache.org/licenses/LICENSE-2.0).
+ * <p>
+ * Created by sviglas on 11/08/15.
+ */
+
 package net.sviglas.meridian.task;
 
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.concurrent.RecursiveTask;
 
 import net.sviglas.meridian.storage.Dataset;
 import net.sviglas.util.Pair;
 
+/**
+ * Basic abstraction of a partitioning task.  Splits a dataset into multiple
+ * keyed partitions.
+ *
+ * @param <TIn> the input type.
+ * @param <KOut> the output key type.
+ * @param <VOut> the output value type.
+ */
 public class PartitionTask<TIn, KOut extends Comparable<? super KOut>, VOut>
         extends Task<SortedMap<KOut, Dataset<VOut>>> {
+    // the input dataset
     private Dataset<TIn> input;
+    // the range over the input
     private Range<Long> range;
+    // the partitioner function
     private PartitionFunction<TIn, KOut, VOut> partitioner;
-    
+
+    /**
+     * Constructs a new partitioning task for the given parameters and with the
+     * default dataset constructor.
+     *
+     * @param i the input dataset.
+     * @param r the input range splitter.
+     * @param p the partitioning function.
+     */
     public PartitionTask(Dataset<TIn> i, Range<Long> r,
                          PartitionFunction<TIn, KOut, VOut> p) {
         this(i, r, p, new DefaultDatasetConstructor());
     }
 
+    /**
+     * Constructs a new partitioning task for the given parameters and
+     * dataset constructor.
+     *
+     * @param i the input dataset.
+     * @param r the input range splitter.
+     * @param p the partitioning function.
+     * @param ctor the dataset constructor.
+     */
     public PartitionTask(Dataset<TIn> i, Range<Long> r,
                          PartitionFunction<TIn, KOut, VOut> p,
                          DatasetConstructor ctor) {
@@ -28,6 +63,12 @@ public class PartitionTask<TIn, KOut extends Comparable<? super KOut>, VOut>
         partitioner = p;
     }
 
+    /**
+     * Invokes the partitioning function by iterating over all elements of the
+     * input dataset and partitioning them into a keyed map of datasets.
+     *
+     * @return the output map.
+     */
     @Override
     protected SortedMap<KOut, Dataset<VOut>> compute() {
         if (range.smallEnough()) {
@@ -60,7 +101,14 @@ public class PartitionTask<TIn, KOut extends Comparable<? super KOut>, VOut>
             return merge(left.join(), right.join());
         }
     }
-    
+
+    /**
+     * Merges two maps on their keys.
+     *
+     * @param left the left input map.
+     * @param right the right input map.
+     * @return the output map.
+     */
     protected SortedMap<KOut, Dataset<VOut>>
             merge(SortedMap<KOut, Dataset<VOut>> left,
                   SortedMap<KOut, Dataset<VOut>> right) {
@@ -75,5 +123,4 @@ public class PartitionTask<TIn, KOut extends Comparable<? super KOut>, VOut>
         }
         return big;
     }
-    
 }

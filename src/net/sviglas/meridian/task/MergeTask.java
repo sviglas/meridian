@@ -1,3 +1,11 @@
+/*
+ * This is part of the Meridian code base, licensed under the
+ * Apache License 2.0 (see also
+ * http://www.apache.org/licenses/LICENSE-2.0).
+ * <p>
+ * Created by sviglas on 10/08/15.
+ */
+
 package net.sviglas.meridian.task;
 
 import net.sviglas.meridian.storage.ArrayStore;
@@ -7,23 +15,43 @@ import net.sviglas.util.Pair;
 import java.util.*;
 
 /**
- * This is part of the Meridian code base, licensed under the
- * Apache License 2.0 (see also
- * http://www.apache.org/licenses/LICENSE-2.0).
- * <p>
- * Created by sviglas on 10/08/15.
+ * Merges two split input datasets depending on the order of their elements.
+ *
+ * @param <T> the input type.
  */
 public class MergeTask<T> extends Task<Dataset<T>> {
+    // the left input
     private List<Dataset<T>> leftInput;
+    // the right input
     private List<Dataset<T>> rightInput;
+    // the input range
     private Range<Integer> range;
+    // the merging function
     private MergeFunction<T> merger;
 
+    /**
+     * Construct a new merge task given inputs and with the default dataset
+     * constructor.
+     *
+     * @param l the left input.
+     * @param r the right input.
+     * @param rg the range enumerator.
+     * @param m the merging function.
+     */
     public MergeTask(List<Dataset<T>> l, List<Dataset<T>> r,
                      Range<Integer> rg, MergeFunction<T> m) {
         this(l, r, rg, m, new DefaultDatasetConstructor());
     }
 
+    /**
+     * Construct a new merge task given inputs and dataset constructor.
+     *
+     * @param l the left input.
+     * @param r the right input.
+     * @param rg the range enumerator.
+     * @param m the merging function.
+     * @param ctor the dataset constructor.
+     */
     public MergeTask(List<Dataset<T>> l, List<Dataset<T>> r,
                      Range<Integer> rg, MergeFunction<T> m,
                      DatasetConstructor ctor) {
@@ -34,6 +62,12 @@ public class MergeTask<T> extends Task<Dataset<T>> {
         merger = m;
     }
 
+    /**
+     * Invokes the task computation; merges corresponding datasets by the
+     * merging comparator into a large output dataset.
+     *
+     * @return the merged input datasets.
+     */
     @Override
     public Dataset<T> compute() {
         if (range.smallEnough()) {
@@ -60,6 +94,13 @@ public class MergeTask<T> extends Task<Dataset<T>> {
         }
     }
 
+    /**
+     * Helper method to locally merge two datasets.
+     *
+     * @param l the left dataset.
+     * @param r the right dataset.
+     * @param out the output dataset to receive the merged inputs.
+     */
     protected void localMerge(Dataset<T> l, Dataset<T> r, Dataset<T> out) {
         Iterator<T> lit = l.iterator();
         Iterator<T> rit = r.iterator();
@@ -95,6 +136,11 @@ public class MergeTask<T> extends Task<Dataset<T>> {
         }
     }
 
+    /**
+     * Debug main.
+     *
+     * @param args parameters.
+     */
     public static void main(String [] args) {
         Dataset<Integer> left = new ArrayStore<>(Integer.class);
         left.add(1);    left.add(2);    left.add(3);    left.add(4);
@@ -113,6 +159,6 @@ public class MergeTask<T> extends Task<Dataset<T>> {
                 });
         Dataset<Integer> out = new ArrayStore<>(Integer.class);
         mt.localMerge(left, right, out);
-        System.out.println("output: " + out);
+        out.print(System.out);
     }
 }

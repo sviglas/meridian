@@ -1,3 +1,11 @@
+/*
+ * This is part of the Meridian code base, licensed under the
+ * Apache License 2.0 (see also
+ * http://www.apache.org/licenses/LICENSE-2.0).
+ * <p>
+ * Created by sviglas on 11/08/15.
+ */
+
 package net.sviglas.meridian.task;
 
 import net.sviglas.meridian.storage.Dataset;
@@ -7,34 +15,60 @@ import java.util.List;
 import java.util.concurrent.RecursiveTask;
 
 /**
- * This is part of the Meridian code base, licensed under the
- * Apache License 2.0 (see also
- * http://www.apache.org/licenses/LICENSE-2.0).
- * <p>
- * Created by sviglas on 11/08/15.
+ * Basic abstraction of a splitter task.  Splits the dataset in small enough
+ * sublists, depending on the given range.
+ *
+ * @param <T> the records of the dataset.
  */
-public class SplitTask<T> extends RecursiveTask<Dataset<T>> {
-    private Dataset<T> input;
-    private Class<T> type;
-    private Range<Long> range;
-    private DatasetConstructor datasetConstructor;
 
+public class SplitTask<T> extends Task<Dataset<T>> {
+    // the input dataset
+    private Dataset<T> input;
+    // the input record type
+    private Class<T> type;
+    // the splitting range
+    private Range<Long> range;
+
+    /**
+     * Constructs a new splitter given its input, record type, and range, with
+     * the default dataset constructor.
+     *
+     * @param i the input dataset.
+     * @param c the input record type.
+     * @param r the range on which the dataset is split.
+     */
     public SplitTask(Dataset<T> i, Class<T> c, Range<Long> r) {
         this(i, c, r, new DefaultDatasetConstructor());
     }
 
+    /**
+     * Constructs a new splitter given its input, record type, and range, with
+     * the given dataset constructor.
+     *
+     * @param i the input dataset.
+     * @param c the input record type.
+     * @param r the range on which the dataset is split.
+     * @param ctor the dataset constructor of the new datasets.
+     */
     public SplitTask(Dataset<T> i, Class<T> c, Range<Long> r,
                      DatasetConstructor ctor) {
+        super(ctor);
         input = i;
         type = c;
         range = r;
-        datasetConstructor = ctor;
     }
 
+    /**
+     * Invokes the task's computation.
+     *
+     * @return a single invocation over the task's input to a small-enough range
+     * of the dataset.
+     */
     @Override
     public Dataset<T> compute() {
         if (range.smallEnough()) {
-            Dataset<T> localOutput = datasetConstructor.constructDataset(type);
+            Dataset<T> localOutput =
+                    getDatasetConstructor().constructDataset(type);
             for (long idx = range.begin(); idx < range.end(); idx++) {
                 localOutput.add(input.get(idx));
             }
@@ -43,9 +77,9 @@ public class SplitTask<T> extends RecursiveTask<Dataset<T>> {
         else {
             Pair<Range<Long>, Range<Long>> ranges = range.split();
             SplitTask<T> left = new SplitTask<>(input, type,
-                    ranges.first, datasetConstructor);
+                    ranges.first, getDatasetConstructor());
             SplitTask<T> right = new SplitTask<>(input, type,
-                    ranges.second, datasetConstructor);
+                    ranges.second, getDatasetConstructor());
             left.fork();
             right.fork();
             Dataset<T> localOutput = left.join();

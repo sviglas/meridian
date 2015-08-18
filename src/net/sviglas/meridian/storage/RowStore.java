@@ -1,10 +1,4 @@
-package net.sviglas.meridian.storage;
-
-import java.lang.reflect.Field;
-import java.nio.ByteBuffer;
-import java.util.Iterator;
-
-/**
+/*
  * This is part of the Meridian code base, licensed under the
  * Apache License 2.0 (see also
  * http://www.apache.org/licenses/LICENSE-2.0).
@@ -12,47 +6,115 @@ import java.util.Iterator;
  * Created by sviglas on 12/08/15.
  */
 
+package net.sviglas.meridian.storage;
+
+import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+
+/**
+ * A row store lays out the records contiguously in a directly allocated array
+ * of bytes.
+ *
+ * @param <T> the type of records this dataset hosts.
+ */
 public class RowStore<T> extends AbstractStore<T> {
+    // the default chunk size for an allocation
     private static final int CHUNK_SIZE = 4096;
 
-    public RowStore(Class<T> type) throws BadTypeException {
-        super(type);
+    /**
+     * Constructs a new row store given the type of its records.
+     *
+     * @param c the record type.
+     * @throws BadTypeException if the type does not have a parameter-less
+     * constructor, or if the type is not a primitive type, or if its fields are
+     * not primitive-typed.
+     */
+    public RowStore(Class<T> c) throws BadTypeException {
+        super(c);
     }
 
+    /**
+     * Constructs a new array store given the type of its records and its
+     * allocation increment.
+     *
+     * @param c the record type.
+     * @param da the allocation increment.
+     * @throws BadTypeException if the type does not have a parameter-less
+     * constructor, or if the type is not a primitive type, or if its fields are
+     * not primitive-typed.
+     */
     public RowStore(Class<T> c, int da) throws BadTypeException {
         super(c, da);
     }
 
+    /**
+     * Aligns the allocation size to the size of an operating system page.
+     *
+     * @param da the original allocation size.
+     * @return the aligned allocation size.
+     */
+    @Override
     protected int fixAllocationSize(int da) {
-        return ((da * getElementSize()) / CHUNK_SIZE + 1) * CHUNK_SIZE;
+        return ((da * getRecordSize()) / CHUNK_SIZE + 1) * CHUNK_SIZE;
     }
 
+    /**
+     * Internal method to allocate containers of this store.
+     *
+     * @return a new container for this store.
+     */
     @Override
     protected AbstractStoreContainer<T> allocateContainer() {
         return new RowStoreContainer();
     }
 
+    /**
+     * Internal class that encapsulates the containers of this store.
+     */
     class RowStoreContainer extends AbstractStoreContainer<T> {
+        // the contents of the container
         private final ByteBuffer contents;
+        // the number of occupied records
         private int occupied;
 
+        /**
+         * Default constructor for a column store container.
+         */
         public RowStoreContainer() {
             contents = ByteBuffer.allocateDirect(
-                    getAllocationSize()*getElementSize());
+                    getAllocationSize()* getRecordSize());
             occupied = 0;
         }
 
+        /**
+         * Returns the size of this container.
+         *
+         * @return the size of this container.
+         */
         @Override
         public int size() {
             return occupied;
         }
 
+        /**
+         * Retrieves the record at the given index.
+         *
+         * @param i the index of the record to be retrieved.
+         * @return the record at the given index.
+         * @throws BadAccessException if the record cannot be retrieved.
+         */
         @Override
         public T get(int i) throws BadAccessException {
-            contents.position(i*getElementSize());
+            contents.position(i* getRecordSize());
             return read();
         }
 
+        /**
+         * Reads a record from the current position of the byte buffer.
+         *
+         * @return the record read.
+         * @throws BadAccessException if the record cannot be properly read.
+         */
         protected T read() throws BadAccessException {
             if (isSupportedType(getRecordType())) {
                 return getRecordType().cast(readField(getRecordType()));
@@ -75,6 +137,12 @@ public class RowStore<T> extends AbstractStore<T> {
             }
         }
 
+        /**
+         * Reads a single field for this class.
+         *
+         * @param cls the primitive type of field to be read.
+         * @return the field's value.
+         */
         protected Object readField(Class<?> cls) {
             if (cls.equals(Byte.class) || cls.equals(byte.class))
                 return contents.get();
@@ -93,13 +161,26 @@ public class RowStore<T> extends AbstractStore<T> {
             else return null;
         }
 
+        /**
+         * Adds a new record to this container.
+         *
+         * @param t the record to be added.
+         * @throws BadAccessException whenever the record cannot be added.
+         */
         @Override
         public void add(T t) throws BadAccessException {
-            contents.position(occupied*getElementSize());
+            contents.position(occupied* getRecordSize());
             write(t);
             occupied++;
         }
 
+        /**
+         * Writes the given record at the current position in the container's
+         * buffer.
+         *
+         * @param t the record to be written.
+         * @throws BadAccessException whenever the record cannot be read.
+         */
         protected void write(T t) throws BadAccessException {
             if (isSupportedType(t.getClass())) {
                 writeField(t);
@@ -117,6 +198,11 @@ public class RowStore<T> extends AbstractStore<T> {
             }
         }
 
+        /**
+         * Writes a single field.
+         *
+         * @param t the field to be written.
+         */
         protected void writeField(Object t) {
             // this is probably nonsensical
             if (t.getClass().equals(Byte.class)
@@ -143,6 +229,11 @@ public class RowStore<T> extends AbstractStore<T> {
         }
     }
 
+    /**
+     * Debug main.
+     *
+     * @param s parameters.
+     */
     public static void main(String [] s) {
         class TestClass {
             private int key;

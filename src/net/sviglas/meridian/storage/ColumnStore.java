@@ -1,11 +1,4 @@
-package net.sviglas.meridian.storage;
-
-import java.lang.reflect.Field;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-
-/**
+/*
  * This is part of the Meridian code base, licensed under the
  * Apache License 2.0 (see also
  * http://www.apache.org/licenses/LICENSE-2.0).
@@ -13,26 +6,71 @@ import java.util.Map;
  * Created by sviglas on 14/08/15.
  */
 
+package net.sviglas.meridian.storage;
+
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * A column store effectively decomposes the dataset into multiple columns, one
+ * for each field of the record type.
+ *
+ * @param <T> the record type.
+ */
+
 public class ColumnStore<T> extends AbstractStore<T> {
 
+    /**
+     * Constructs a new column store given the type of its records.
+     *
+     * @param c the record type.
+     * @throws BadTypeException if the type does not have a parameter-less
+     * constructor, or if the type is not a primitive type, or if its fields are
+     * not primitive-typed.
+     */
     public ColumnStore(Class<T> c) throws BadTypeException {
         super(c);
     }
 
+    /**
+     * Constructs a new column store given the type of its records and its
+     * allocation increment.
+     *
+     * @param c the record type.
+     * @param da the allocation increment.
+     * @throws BadTypeException if the type does not have a parameter-less
+     * constructor, or if the type is not a primitive type, or if its fields are
+     * not primitive-typed.
+     */
     public ColumnStore(Class<T> c, int da) throws BadTypeException {
         super(c, da);
     }
 
+    /**
+     * Allocates a new container for this type of store.
+     *
+     * @return a new container for the store.
+     */
     @Override
     protected AbstractStoreContainer<T> allocateContainer() {
         return new ColumnStoreContainer();
     }
 
+    /**
+     * Internal class that encapsulates the containers of this store.
+     */
     class ColumnStoreContainer extends AbstractStoreContainer<T> {
+        // default column name
         protected static final String DEFAULT_NAME = "COLUMN";
+        // map of columns for this container
         public Map<String, Object> columns;
+        // number of records occupied
         public int occupied;
 
+        /**
+         * Default constructor for a column store container.
+         */
         public ColumnStoreContainer() {
             columns = new HashMap<>();
             if (isSupportedType(getRecordType())) {
@@ -47,6 +85,13 @@ public class ColumnStore<T> extends AbstractStore<T> {
             }
         }
 
+        /**
+         * Given a primitive type, return a column for elements of that type.
+         *
+         * @param cls the primitive type.
+         * @param alloc the number of elements to allocate.
+         * @return an array of elements of the given type.
+         */
         protected Object makeColumn(Class<?> cls, int alloc) {
             if (cls.equals(Byte.class) || cls.equals(byte.class))
                 return new byte [alloc];
@@ -65,11 +110,23 @@ public class ColumnStore<T> extends AbstractStore<T> {
             return null;
         }
 
+        /**
+         * Returns the size of this container.
+         *
+         * @return the size of this container.
+         */
         @Override
         public int size() {
             return occupied;
         }
 
+        /**
+         * Retrieves the record at the given index.
+         *
+         * @param i the index of the record to be retrieved.
+         * @return the record at the given index.
+         * @throws BadAccessException if the record cannot be retrieved.
+         */
         @Override
         public T get(int i) throws BadAccessException {
             if (isSupportedType(getRecordType())) {
@@ -95,6 +152,14 @@ public class ColumnStore<T> extends AbstractStore<T> {
             }
         }
 
+        /**
+         * Internal method to get a single field.
+         *
+         * @param n the name of the field.
+         * @param cls the type of the field.
+         * @param i the index of the field.
+         * @return the value of the field.
+         */
         protected Object getField(String n, Class<?> cls, int i) {
             Object o = columns.get(n);
             if (cls.equals(Byte.class) || cls.equals(byte.class))
@@ -114,6 +179,12 @@ public class ColumnStore<T> extends AbstractStore<T> {
             return null;
         }
 
+        /**
+         * Adds a new record to this container.
+         *
+         * @param t the record to be added.
+         * @throws BadAccessException whenever the record cannot be added.
+         */
         @Override
         public void add(T t) throws BadAccessException {
             if (isSupportedType(getRecordType())) {
@@ -134,6 +205,13 @@ public class ColumnStore<T> extends AbstractStore<T> {
             occupied++;
         }
 
+        /**
+         * Internal method to add a single field.
+         *
+         * @param n the name of the field.
+         * @param cls the type of the field.
+         * @param v the value of the field.
+         */
         protected void addField(String n, Class<?> cls, Object v) {
             Object o = columns.get(n);
             if (cls.equals(Byte.class) || cls.equals(byte.class))
@@ -153,6 +231,11 @@ public class ColumnStore<T> extends AbstractStore<T> {
         }
     }
 
+    /**
+     * Debug main.
+     *
+     * @param s parameters.
+     */
     public static void main(String [] s) {
         class TestClass {
             private int key;
